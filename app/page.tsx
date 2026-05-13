@@ -11,9 +11,19 @@ interface PageProps {
   searchParams: Promise<{ filter?: string }>;
 }
 
+function normalizeBase(raw: string | undefined): string | undefined {
+  const v = raw?.trim().replace(/\/$/, "");
+  if (!v) return undefined;
+  if (/^https?:\/\//i.test(v)) return v;
+  if (v.startsWith("localhost") || v.startsWith("127.0.0.1")) return `http://${v}`;
+  return `https://${v}`;
+}
+
 async function fetchScan(): Promise<ScanResponse | null> {
-  const explicitBase = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  let baseUrl = explicitBase;
+  // Priority: explicit env > request headers (works on Vercel) > VERCEL_URL > localhost.
+  let baseUrl =
+    normalizeBase(process.env.NEXT_PUBLIC_SITE_URL) ??
+    normalizeBase(process.env.VERCEL_URL);
   if (!baseUrl) {
     try {
       const h = await headers();
